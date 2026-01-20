@@ -1,0 +1,17 @@
+[project]
+name = "liblanis"
+version = "1.0.0a1"
+description = "A library to provide an API for the Schulportal Hessen (Lanis)."
+readme = "README.md"
+authors = [
+    { name = "spezian", email = "dacjan@mailbox.org" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "httpx==0.28.1",
+    "selectolax==0.4.6",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
