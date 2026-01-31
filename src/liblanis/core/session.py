@@ -4,6 +4,7 @@ import urllib.parse
 
 import httpx
 from liblanis.core.types import AccountType
+from liblanis.core.crypt import Crypt
 from selectolax.lexbor import LexborHTMLParser as Parser
 
 from .. import __version__, __isDev__
@@ -23,7 +24,7 @@ class PreventLogout(threading.Thread):
         while True:
             self.event.wait(self.interval)
 
-            if (self.event.is_set()):
+            if self.event.is_set():
                 break
 
             self.request.post(
@@ -55,6 +56,8 @@ class Session:
     _prevent_logout_interval = 10.0
     _prevent_logout: PreventLogout
 
+    _crypt: Crypt
+
     def __init__(self, school_id: int, username: str, password: str) -> None:
         self.school_id = school_id
         self.username = username
@@ -85,6 +88,9 @@ class Session:
 
         self.token = start_session.cookies.get("sid")
 
+        self._crypt = Crypt(self.request)
+        self._crypt.authenticate()
+
         self._prevent_logout = PreventLogout(self.request, self.token, self._prevent_logout_interval)
         self._prevent_logout.start()
 
@@ -107,9 +113,9 @@ class Session:
     def _decrypt_response(self, response: httpx.Response) -> None:
         content = response.read()
 
-        if (content):
+        if content:
             content_type = response.headers.get("content-type")
-            if ('text/html' in content_type):
+            if 'text/html' in content_type:
                 # TODO: ADD CRYPTOR MODULE
                 decrypted_content = content
 
@@ -117,17 +123,17 @@ class Session:
 
     def _parse_account_type(self, account_data_page: Parser) -> None:
         icon_class_list = account_data_page.css_first(".nav.navbar-nav.navbar-right>li>a>i").attributes.get("class")
-        if ("fa-child" in icon_class_list):
+        if "fa-child" in icon_class_list:
             self.account_type = AccountType.STUDENT
-        elif ("fa-user-circle" in icon_class_list):
+        elif "fa-user-circle" in icon_class_list:
             self.account_type = AccountType.PARENT
-        elif ("fa-user" in icon_class_list):
+        elif "fa-user" in icon_class_list:
             self.account_type = AccountType.TEACHER
 
     def _parse_user_data(self, account_data_page: Parser) -> None:
         user_data_table_body = account_data_page.css_first("div.col-md-12 table.table.table-striped tbody")
 
-        if (user_data_table_body.html is not None):
+        if user_data_table_body.html is not None:
             result = {}
 
             rows = user_data_table_body.css("tr")
