@@ -36,13 +36,16 @@ class PreventLogout(threading.Thread):
                 },
             )
 
-    def stop(self):
+    def stop(self) -> None:
         self.event.set()
 
 
 class Session:
     request: httpx.Client
     "A http client to make requests. Can be also used externally."
+
+    crypt: Crypt
+    "A module to decrypt encrypted sensitive data like attendance."
 
     token = ""
     "The token of the current session. Resembles the 'sid' cookie."
@@ -56,7 +59,6 @@ class Session:
     _prevent_logout_interval = 10.0
     _prevent_logout: PreventLogout
 
-    _crypt: Crypt
 
     def __init__(self, school_id: int, username: str, password: str) -> None:
         self.school_id = school_id
@@ -88,8 +90,7 @@ class Session:
 
         self.token = start_session.cookies.get("sid")
 
-        self._crypt = Crypt(self.request)
-        self._crypt.authenticate()
+        self.crypt = Crypt(self.request)
 
         self._prevent_logout = PreventLogout(self.request, self.token, self._prevent_logout_interval)
         self._prevent_logout.start()
@@ -116,9 +117,7 @@ class Session:
         if content:
             content_type = response.headers.get("content-type")
             if 'text/html' in content_type:
-                # TODO: ADD CRYPTOR MODULE
-                decrypted_content = content
-
+                decrypted_content = self.crypt.decrypt_encoded_tags(content.decode())
                 response._content = decrypted_content
 
     def _parse_account_type(self, account_data_page: Parser) -> None:
@@ -152,5 +151,5 @@ class Session:
     def __enter__(self) -> Session:
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.deauthenticate()
