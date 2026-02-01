@@ -4,7 +4,7 @@ import urllib.parse
 
 import httpx
 from liblanis.core.types import AccountType
-from liblanis.core.crypt import Crypt
+from liblanis.core.cryption import Cryption
 from selectolax.lexbor import LexborHTMLParser as Parser
 
 from .. import __version__, __isDev__
@@ -44,7 +44,7 @@ class Session:
     request: httpx.Client
     "A http client to make requests. Can be also used externally."
 
-    crypt: Crypt
+    cryption: Cryption
     "A module to decrypt encrypted sensitive data like attendance."
 
     token = ""
@@ -90,7 +90,7 @@ class Session:
 
         self.token = start_session.cookies.get("sid")
 
-        self.crypt = Crypt(self.request)
+        self.cryption = Cryption(self.request)
 
         self._prevent_logout = PreventLogout(self.request, self.token, self._prevent_logout_interval)
         self._prevent_logout.start()
@@ -117,7 +117,7 @@ class Session:
         if content:
             content_type = response.headers.get("content-type")
             if 'text/html' in content_type:
-                decrypted_content = self.crypt.decrypt_encoded_tags(content.decode())
+                decrypted_content = self.cryption.decrypt_encoded_tags(content.decode())
                 response._content = decrypted_content
 
     def _parse_account_type(self, account_data_page: Parser) -> None:
@@ -137,10 +137,10 @@ class Session:
 
             rows = user_data_table_body.css("tr")
             for row in rows:
-                childs = row.iter()
+                children = row.iter()
 
-                key = next(childs).text(strip=True)
-                value = next(childs).text(strip=True)
+                key = next(children).text(strip=True)
+                value = next(children).text(strip=True)
 
                 key = key.lower()
 
